@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CV Embed - Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>CV Embed</h1>
+    </header>
+
+    <main>
+      <div class="result-header">
+        <h2>Your Result</h2>
+        <div class="score-circle">
+          <div class="score-text">{{ similarity_score }}%</div>
+        </div>
+      </div>
+
+      <!-- Add this after the result-header div -->
+      <div class="model-info" style="text-align: center; margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.9em; color: #6c757d;">
+        {% if analysis.model_info %}
+        Analyzed with: {{ analysis.model_info.model_used }} 
+        <span style="font-size: 0.8em;">({{ analysis.model_info.model_generation }} generation)</span>
+        {% else %}
+        Analyzed with: Fallback mode
+        {% endif %}
+      </div>
+
+      <div class="legend">
+        <span class="legend-title">Highlighting Legend</span>
+        <div class="legend-items">
+          <span class="legend-chip hl hl-critical">Critical</span>
+          <span class="legend-desc">Missing keywords</span>
+          <span class="legend-chip hl hl-medium">Medium</span>
+          <span class="legend-desc">Weak language</span>
+          <span class="legend-chip hl hl-low">Low</span>
+          <span class="legend-desc">Needs context</span>
+          <span class="legend-chip hl hl-good">Good</span>
+          <span class="legend-desc">Strong content</span>
+        </div>
+      </div>
+
+      <section class="smart-panel {{ ats_level }}">
+        <div class="smart-title">
+          <span>Smart CV Analysis</span>
+          <span class="ats-badge">{{ analysis.ats_score }}/100 ATS</span>
+        </div>
+        <div class="smart-grid">
+          <div class="smart-item">
+            <div class="smart-value smart-critical">{{ analysis.smart_cv_analysis.critical_issues }}</div>
+            <div class="smart-label">Critical Issues</div>
+          </div>
+          <div class="smart-item">
+            <div class="smart-value smart-medium">{{ analysis.smart_cv_analysis.improvements }}</div>
+            <div class="smart-label">Improvements</div>
+          </div>
+          <div class="smart-item">
+            <div class="smart-value smart-low">{{ analysis.smart_cv_analysis.missing_skills }}</div>
+            <div class="smart-label">Missing Skills</div>
+          </div>
+          <div class="smart-item">
+            <div class="smart-value smart-good">{{ analysis.smart_cv_analysis.keywords_found }}</div>
+            <div class="smart-label">Keywords Found</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- message and matches moved OUTSIDE the smart-grid/panel -->
+      <div class="result-message">
+        {% if similarity_score < 30 %}
+          <p>It seems your resume and this job description have some differences. Don't be discouraged - consider tweaking your resume to highlight relevant experiences or explore other opportunities that might be a better fit.</p>
+        {% elif similarity_score < 60 %}
+          <p>Your resume has some alignment with the job description. Try highlighting more relevant skills and experiences to improve your match.</p>
+        {% else %}
+          <p>Great match! Your resume aligns well with the job requirements.</p>
+        {% endif %}
+      </div>
+
+      <div class="job-matches">
+        <h3>Your Resume Match With This Job Description</h3>
+        <ol class="match-list">
+          {% for job, score in top_matches %}
+            <li>
+              <span class="job-title">{{ job }}</span>
+              <span class="similarity-score">Similarity {{ score }}%</span>
+            </li>
+          {% endfor %}
+        </ol>
+      </div>
+
+      <section class="chips-panel">
+        <h3>Required Keywords</h3>
+        <div class="chips-wrap">
+          {% for kw in analysis.jd_required_keywords %}
+            {% if kw in analysis.present_required %}
+              <span class="skill-chip chip-good">
+                {{ kw }}
+                <span class="chip-mark pass" aria-label="present">✓</span>
+              </span>
+            {% else %}
+              <span class="skill-chip chip-critical">
+                {{ kw }}
+                <span class="chip-mark fail" aria-label="missing">✕</span>
+              </span>
+            {% endif %}
+          {% endfor %}
+          {% if analysis.jd_required_keywords|length == 0 %}
+            <div class="empty-note">No required keywords detected in JD.</div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="chips-panel">
+        <h3>Optional Keywords</h3>
+        <div class="chips-wrap">
+          {% for kw in analysis.jd_optional_keywords %}
+            {% if kw in analysis.present_optional %}
+              <span class="skill-chip chip-good">
+                {{ kw }}
+                <span class="chip-mark pass" aria-label="present">✓</span>
+              </span>
+            {% else %}
+              <span class="skill-chip chip-low">
+                {{ kw }}
+                <span class="chip-mark fail" aria-label="missing">✕</span>
+              </span>
+            {% endif %}
+          {% endfor %}
+          {% if analysis.jd_optional_keywords|length == 0 %}
+            <div class="empty-note">No optional keywords detected in JD.</div>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="chips-split">
+        <div class="chips-col">
+          <h3>Technical Skills ({{ analysis.technical_skills|length }})</h3>
+          <div class="chips-wrap">
+            {% for s in analysis.technical_skills %}
+              {% if s in analysis.present_technical %}
+                <span class="skill-chip chip-good">
+                  {{ s }}
+                  <span class="chip-mark pass" aria-label="present">✓</span>
+                </span>
+              {% else %}
+                <span class="skill-chip chip-low{% if s in analysis.missing_technical %} chip-critical{% endif %}">
+                  {{ s }}
+                  <span class="chip-mark fail" aria-label="missing">✕</span>
+                </span>
+              {% endif %}
+            {% endfor %}
+            {% if analysis.technical_skills|length == 0 %}
+              <div class="empty-note">No technical skills extracted.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="chips-col">
+          <h3>Soft Skills ({{ analysis.soft_skills|length }})</h3>
+          <div class="chips-wrap">
+            {% for s in analysis.soft_skills %}
+              {% if s in analysis.present_soft %}
+                <span class="skill-chip chip-good">
+                  {{ s }}
+                  <span class="chip-mark pass" aria-label="present">✓</span>
+                </span>
+              {% else %}
+                <span class="skill-chip chip-low{% if s in analysis.missing_soft %} chip-critical{% endif %}">
+                  {{ s }}
+                  <span class="chip-mark fail" aria-label="missing">✕</span>
+                </span>
+              {% endif %}
+            {% endfor %}
+            {% if analysis.soft_skills|length == 0 %}
+              <div class="empty-note">No soft skills extracted.</div>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <div class="resume-comparison">
+        <div class="resume-section">
+          <h4>Your Resume</h4>
+          <div class="content-box content-mono">{{ resume_hl|safe }}</div>
+          {% if analysis.weak_language_phrases or analysis.low_context_phrases %}
+            <div class="notes">
+              {% if analysis.weak_language_phrases %}
+                <div class="note-title">Weak language</div>
+                <ul class="note-list">
+                  {% for p in analysis.weak_language_phrases %}
+                    <li>{{ p }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+              {% if analysis.low_context_phrases %}
+                <div class="note-title">Needs context</div>
+                <ul class="note-list">
+                  {% for p in analysis.low_context_phrases %}
+                    <li>{{ p }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="resume-section">
+          <h4>Job Description</h4>
+          <div class="content-box content-mono">{{ jd_hl|safe }}</div>
+        </div>
+      </div>
+
+      <section class="ats-suggestions">
+        <h3>ATS-Friendly Suggestions</h3>
+        <ul class="suggestions-list">
+          {% for s in analysis.ats_suggestions %}
+            <li>• {{ s }}</li>
+          {% endfor %}
+          {% if analysis.ats_suggestions|length == 0 %}
+            <li>• Tailor resume with JD keywords.</li>
+          {% endif %}
+        </ul>
+      </section>
+
+      <div class="actions">
+        <button onclick="window.location.href='/'">Analyze More</button>
+        <button onclick="window.location.href='/download_report'">Download Report</button>
+      </div>
+    </main>
+
+    <footer>
+      <p>CVEmbed © 2025 All rights reserved</p>
+    </footer>
+  </div>
+</body>
+</html>
